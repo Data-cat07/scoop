@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.tools/
+artifacts/
+!artifacts/model/
+!artifacts/model/**
+*.tsbuildinfo
+# Local reference media is not required to build or run the game.
+/image/
+/*.png
+/*.mp4
+

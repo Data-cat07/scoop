@@ -1,0 +1,32 @@
+import React,{useEffect,useRef,useState} from 'react';
+import {createRoot} from 'react-dom/client';
+import {GameEngine} from './game/engine';
+import {accuracy,type Snapshot} from './game/rules';
+import './style.css';
+const initial:Snapshot={phase:'ready',score:0,best:0,time:60,ammo:30,shots:0,hits:0,reload:0,countdown:3,sound:true,hitId:0};
+function Icon({name}:{name:'sound'|'mute'|'arrow'|'target'|'pause'}){return <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{name==='arrow'?<><path d="M4 12h15M13 6l6 6-6 6"/></>:name==='target'?<><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3"/></>:name==='pause'?<><path d="M9 6v12M15 6v12"/></>:<><path d="M11 4L6 8H3v8h3l5 4z"/>{name==='sound'?<><path d="M15 8a6 6 0 010 8m3-11a10 10 0 010 14"/></>:<path d="M16 9l5 6m0-6l-5 6"/>}</>}</svg>}
+function App(){
+ const host=useRef<HTMLDivElement>(null),engine=useRef<GameEngine|null>(null);
+ const [s,setS]=useState(initial),[error,setError]=useState(''),[fatal,setFatal]=useState(false),[hit,setHit]=useState(false);
+ const lastHit=useRef(0);
+ useEffect(()=>{try{engine.current=new GameEngine(host.current!,setS,setError);}catch(e){setFatal(true);setError('3D 화면을 시작하지 못했어요. 브라우저의 하드웨어 가속을 확인하고 페이지를 새로고침해주세요.');console.error(e);}return()=>engine.current?.dispose();},[]);
+ useEffect(()=>{if(s.hitId<=lastHit.current)return;lastHit.current=s.hitId;setHit(true);const id=setTimeout(()=>setHit(false),350);return()=>clearTimeout(id);},[s.hitId]);
+ const playing=s.phase==='playing'||s.phase==='countdown';
+ const start=()=>{void engine.current?.start();};
+ return <main className={`app ${playing?'in-game':''}`}>
+  <div ref={host} className="world" aria-label="춤추는 아이스크림 3D 사격장"/>
+  <div className="vignette"/>
+  <header className="topbar"><a className="wordmark" href="./" aria-label="Scoop 홈">scoop<span>!</span><i/></a><div className="edition"><span className="live-dot"/>DANCE & SHOOT<span className="edition-line"/>VOL. 01</div><div className="top-actions"><span className="desktop-label">DESKTOP EXPERIENCE</span><button className="icon-button" onClick={()=>engine.current?.toggleSound()} aria-label={s.sound?'소리 끄기':'소리 켜기'} title={s.sound?'소리 끄기':'소리 켜기'}><Icon name={s.sound?'sound':'mute'}/></button>{playing&&<button className="icon-button" onClick={()=>engine.current?.pause()} aria-label="일시정지"><Icon name="pause"/></button>}</div></header>
+  {s.phase==='ready'&&<>
+   <section className="intro"><div className="eyebrow"><span/>THE SWEETEST AIM CHALLENGE</div><h1>Good moves.<br/>Great <em>shots.</em></h1><p className="intro-copy">춤은 신나게, 조준은 정확하게.<br/>춤추는 아이스크림과 함께하는 60초 챌린지.</p><div className="intro-stats"><div><strong>60<span>s</span></strong><small>한 판의 짜릿함</small></div><div><strong>5</strong><small>춤추는 아이스크림</small></div><div><strong>100<span>pt</span></strong><small>한 발의 달콤함</small></div></div><button className="start-button" onClick={start} disabled={fatal}>게임 시작하기<Icon name="arrow"/></button><div className="best-line"><span>✧</span> PERSONAL BEST <b>{s.best.toLocaleString()}</b><small>PT</small></div>{error&&<p role="alert" className="error">{error}</p>}</section>
+   <div className="scene-label"><span className="live-dot"/> LIVE FROM SCOOP PARK <span className="tag">3D</span></div>
+   <aside className="hero-note"><div className="note-icon">♪</div><div><strong>Meet your dancing targets.</strong><span>멈추지 않는 춤, 놓칠 수 없는 한 발.</span></div><span className="note-star">✳</span></aside>
+   <div className="bottom-strip"><span className="how-label">HOW TO PLAY <span>↗</span></span><div className="control"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span>이동</div><div className="control"><span className="mouse-symbol">↖</span>마우스 조준 · 클릭 사격</div><div className="control"><kbd>R</kbd>재장전</div><div className="control"><kbd>ESC</kbd>일시정지</div><span className="footer-flower">✳</span></div>
+  </>}
+  {playing&&<><div className="match-top"><div className="score-box"><small>SCORE</small><strong>{String(s.score).padStart(4,'0')}</strong></div><div className={`timer ${s.time<=10?'urgent':''}`}><small>TIME LEFT</small><strong>{String(Math.ceil(s.time)).padStart(2,'0')}<span>s</span></strong><div className="time-track"><i style={{width:`${s.time/60*100}%`}}/></div></div><div className="accuracy-box"><small>ACCURACY</small><strong>{accuracy(s)}<span>%</span></strong></div></div><div className={`crosshair ${hit?'hit':''}`}><i/><i/><i/><i/><b/></div>{hit&&<div className="hit-score" key={s.hitId}>SWEET SHOT!<strong>+100</strong></div>}<div className="match-bottom"><div className="weapon-label"><Icon name="target"/><div><small>YOUR SWEET COMPANION</small><strong>SCOOP BLASTER <span>01</span></strong></div></div><div className="ammo"><small>{s.reload>0?'RELOADING...':s.ammo===0?'R 키로 재장전':'AMMO'}</small><strong>{String(s.ammo).padStart(2,'0')}<span>/ ∞</span></strong><div className="ammo-track"><i style={{width:`${s.reload>0?(1-s.reload/1.5)*100:s.ammo/30*100}%`}}/></div><span className="reload-hint"><kbd>R</kbd> RELOAD</span></div></div>{s.phase==='countdown'&&<div className="countdown"><span>READY TO GET SWEET?</span><strong key={Math.ceil(s.countdown)}>{Math.ceil(s.countdown)}</strong><p>마우스로 조준하고 클릭해서 사격하세요</p></div>}</>}
+  {(s.phase==='paused'||s.phase==='ended')&&<div className="modal-backdrop"><section className="modal"><div className="modal-star">{s.phase==='ended'?'✳':'Ⅱ'}</div><div className="eyebrow">{s.phase==='ended'?'THAT WAS SWEET!':'TAKE A LITTLE BREAK'}</div><h2>{s.phase==='ended'?'달콤한 한 판 완료.':'잠깐, 쉬어갈까요?'}</h2>{s.phase==='ended'?<><p>좋은 춤, 멋진 조준. 한 번 더 도전해볼까요?</p><div className="result-score"><small>FINAL SCORE</small><strong>{s.score.toLocaleString()}<span>PT</span></strong></div><div className="result-grid"><div><small>명중률</small><b>{accuracy(s)}%</b></div><div><small>명중 / 발사</small><b>{s.hits} / {s.shots}</b></div><div><small>최고 점수</small><b>{s.best.toLocaleString()}</b></div></div></>:<p>준비되면 다시 춤추는 사격장으로 돌아가세요.<br/>남은 시간과 점수는 그대로 기다리고 있어요.</p>}<button className="start-button" onClick={start}>{s.phase==='ended'?'다시 도전하기':'이어하기'}<Icon name="arrow"/></button>{error&&<p className="error" role="alert">{error}</p>}<small className="modal-foot">60 SECONDS. MAKE EVERY SHOT COUNT.</small></section></div>}
+  <div className="small-screen">이 게임은 키보드와 마우스가 있는 PC에서 즐겨주세요.</div>
+ </main>;
+}
+createRoot(document.getElementById('root')!).render(<React.StrictMode><App/></React.StrictMode>);
+
